@@ -33,27 +33,29 @@ public class ThreadsOfSudoku {
             // Your job is to rewrite this to create numThreads threads, with
             //   the set of Sudoku candidate solutions split between them
             //   (for example, 0 to 40 for the first thread and 41-81 for the second).   
-             if(numThreads <= suds.length-1) {
-                int numInGroup = (suds.length-1) / numThreads;
-                Thread[] threads = new Thread[numThreads];
+            Thread[] threads = new Thread[numThreads];
+            int groupSize = suds.length / numThreads;
+            int remainder = suds.length % numThreads;
 
-                int start = 0, end = numInGroup;
-                for (int i = 0; i < numThreads; i++) {
-                    final int threadID = i;
-                    final int finalStart = start, finalEnd = end;
+            int startIndex = 0;
+            for (int i = 0; i < numThreads; i++) {
+                int endIndex = startIndex + groupSize - 1;
 
-                    if(start <= suds.length-1) { 
-                        threads[i] = new Thread(() -> solveSuds(finalStart, finalEnd, threadID));
-                        threads[i].start();
-                    };
-                    
-                    start += numInGroup + 1;
-                    end += numInGroup + 1;
-                    if(end >= suds.length) {end = suds.length -1;}
+                if(remainder > 0) {
+                    endIndex += 1;
+                    remainder -= 1;
                 }
-                for (int i = 0; i < numThreads; i++) {
-                    if(threads[i] != null) { threads[i].join(); };                   
-                }
+
+                final int threadID = i;
+                final int startFinal = startIndex, endFinal = endIndex;
+
+                threads[i] = new Thread(() -> solveSuds(startFinal, endFinal, threadID));
+                threads[i].start();
+                startIndex = endIndex + 1;
+            }
+
+            for (int i = 0; i < numThreads; i++) {
+                threads[i].join();                
             }
 
             // END WORK HERE
@@ -74,11 +76,14 @@ public class ThreadsOfSudoku {
         System.out.println("Thread " + id + " will solve " + first + " to " + last);
         for(int i=first; i<=last; ++i) {
             System.out.println("Thread " + id + " solving " + i);// + "\n\n" + suds[i]);
-            if(suds[i].solve()) solutions.add(suds[i]);
+            synchronized(lock){
+                if(suds[i].solve()) solutions.add(suds[i]);
+            }       
         }
     }
     // END WORK HERE
     
+    private static Object lock = new Object();
     private static Sudoku[] suds = new Sudoku[81];
     private static HashSet<Sudoku> solutions = new HashSet<>();
 }
